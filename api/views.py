@@ -2,32 +2,31 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from ai.service import get_response, AIServiceError
 
 
 class ChatRequestSerializer(serializers.Serializer):
     message = serializers.CharField(max_length=4000)
-    session_id = serializers.UUIDField(required=False)
 
 
 @api_view(['POST'])
 def chat(request):
     """
-    Stateless quick-chat endpoint. Will be wired to OpenAI in step 3.
-    Uses the default permission from settings (IsAuthenticated in prod, AllowAny in dev).
+    Stateless quick-chat endpoint (no session history).
+    Uses default permission: IsAuthenticated in prod, AllowAny in dev.
     """
     serializer = ChatRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    user_message = serializer.validated_data['message']
+    try:
+        result = get_response(serializer.validated_data['message'])
+    except AIServiceError as exc:
+        return Response({'error': str(exc)}, status=exc.status_code)
 
     return Response({
-        'message': (
-            f"Hola! Recibí tu mensaje: '{user_message}'. "
-            "Soy tu asistente de Paraguay. Pronto podré ayudarte con "
-            "información sobre trámites y documentos."
-        ),
-        'sources': [],
-    }, status=status.HTTP_200_OK)
+        'message': result['message'],
+        'sources': result['sources'],
+    })
 
 
 @api_view(['GET'])
