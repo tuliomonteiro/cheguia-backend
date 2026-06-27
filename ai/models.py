@@ -1,4 +1,5 @@
 from django.db import models
+from pgvector.django import VectorField
 import uuid
 
 
@@ -34,7 +35,7 @@ class EmbeddingCache(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     text_hash = models.CharField(max_length=64, unique=True)  # Hash of the text
-    embedding_vector = models.JSONField()  # OpenAI embedding vector
+    embedding_vector = VectorField(dimensions=1536)
     model_used = models.CharField(max_length=100, default='text-embedding-3-small')
     created_at = models.DateTimeField(auto_now_add=True)
     
