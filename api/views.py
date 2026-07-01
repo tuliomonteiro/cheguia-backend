@@ -2,7 +2,8 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from ai.service import get_response, AIServiceError
+from ai.exceptions import AIServiceError
+from ai.service import get_response
 
 
 class ChatRequestSerializer(serializers.Serializer):

@@ -108,6 +108,16 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-OPENAI_API_KEY = os.environ['OPENAI_API_KEY']
+# AI provider configuration
+# Set AI_CHAT_PROVIDER to "openai" or "gemini" to switch chat providers.
+# Set AI_EMBEDDING_PROVIDER to "openai" (only supported option for now).
+AI_CHAT_PROVIDER = os.getenv("AI_CHAT_PROVIDER", "openai")
+AI_CHAT_MODEL = os.getenv("AI_CHAT_MODEL", "gpt-4o-mini")
+AI_EMBEDDING_PROVIDER = os.getenv("AI_EMBEDDING_PROVIDER", "openai")
+AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
+
+# Provider API keys — only the key for the active provider needs to be set.
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 CORS_ALLOW_CREDENTIALS = True
