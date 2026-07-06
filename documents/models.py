@@ -1,4 +1,5 @@
 from django.db import models
+from pgvector.django import VectorField
 import uuid
 
 
@@ -25,7 +26,7 @@ class Document(models.Model):
     source_url = models.URLField(max_length=1000, blank=True, null=True)
     document_type = models.CharField(max_length=100, choices=DOCUMENT_TYPES)
     language = models.CharField(max_length=10, choices=LANGUAGE_CHOICES, default='es')
-    embedding_vector = models.JSONField(null=True, blank=True)  # Store OpenAI embeddings
+    embedding_vector = VectorField(dimensions=1536, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
