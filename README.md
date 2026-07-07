@@ -1,6 +1,8 @@
-# Cheguia — Backend
+# Cheguia
 
 AI-powered guide for Brazilians and other newcomers navigating Paraguayan bureaucracy. Users can chat in Portuguese or Spanish and get grounded, source-cited answers about immigration, taxes, banking, utilities, and daily life in Paraguay.
+
+This repo contains both the Django backend (root) and the Next.js frontend (`frontend/`).
 
 ---
 
@@ -14,6 +16,7 @@ AI-powered guide for Brazilians and other newcomers navigating Paraguayan bureau
 - [Getting Started](#getting-started)
   - [With Docker (recommended)](#with-docker-recommended)
   - [Without Docker](#without-docker)
+  - [Frontend (Next.js)](#frontend-nextjs)
 - [Environment Variables](#environment-variables)
 - [Knowledge Base](#knowledge-base)
 - [Settings](#settings)
@@ -23,7 +26,7 @@ AI-powered guide for Brazilians and other newcomers navigating Paraguayan bureau
 
 ## Overview
 
-Cheguia is a chat-based assistant that helps newcomers deal with Paraguayan bureaucracy. The backend exposes a REST API consumed by a Next.js frontend (separate repository).
+Cheguia is a chat-based assistant that helps newcomers deal with Paraguayan bureaucracy. The Django backend exposes a REST API, consumed by the Next.js frontend in `frontend/` (a separate app within this repo, deployed independently).
 
 Core features:
 
@@ -38,13 +41,15 @@ Core features:
 
 | Layer | Technology |
 |---|---|
-| Framework | Django 4.2 + Django REST Framework |
+| Backend framework | Django 4.2 + Django REST Framework |
 | AI | LangChain + OpenAI `gpt-4o-mini` |
 | Embeddings | OpenAI `text-embedding-3-small` (1536 dimensions) |
 | Vector search | PostgreSQL + pgvector (HNSW index, cosine similarity) |
-| Auth | djangorestframework-simplejwt |
+| Auth | djangorestframework-simplejwt (JWT bearer tokens) |
 | Server | Gunicorn |
 | Containerisation | Docker + docker-compose |
+| Frontend framework | Next.js 16 (App Router, React 19, TypeScript) |
+| Frontend styling | Tailwind CSS |
 
 ---
 
@@ -53,7 +58,8 @@ Core features:
 ```
 ┌─────────────────────────────────────────────────────┐
 │                     Client                          │
-│              (Next.js / Mobile app)                 │
+│   Next.js app in frontend/ (JWT stored client-side)  │
+│              or a mobile app                        │
 └────────────────────┬────────────────────────────────┘
                      │ HTTP + JWT
 ┌────────────────────▼────────────────────────────────┐
@@ -151,6 +157,19 @@ cheguia-backend/
 │
 ├── docker/
 │   └── entrypoint.sh           # Waits for DB → migrate → start gunicorn
+│
+├── frontend/                   # Next.js chat UI (separate app, own package.json)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── layout.tsx      # Wraps the app in AuthProvider
+│   │   │   ├── page.tsx        # Chat UI: sessions sidebar + message thread
+│   │   │   ├── login/page.tsx
+│   │   │   └── register/page.tsx
+│   │   └── lib/
+│   │       ├── api.ts          # Typed fetch client for every backend endpoint
+│   │       └── auth-context.tsx # JWT storage (localStorage) + auth state
+│   ├── package.json
+│   └── .env.example             # NEXT_PUBLIC_API_URL
 │
 ├── Dockerfile
 ├── docker-compose.yml
@@ -308,7 +327,33 @@ python manage.py ingest_documents --sample
 
 ---
 
+### Frontend (Next.js)
+
+**Prerequisites:** Node.js 20+, and the backend running (Docker or bare-metal) on **http://localhost:8000**.
+
+```bash
+cd frontend
+
+# 1. Install dependencies
+npm install
+
+# 2. Set up environment variables
+cp .env.example .env.local
+# Defaults to NEXT_PUBLIC_API_URL=http://localhost:8000 — adjust if the API runs elsewhere
+
+# 3. Start the dev server
+npm run dev
+```
+
+The UI will be available at **http://localhost:3000**. `cheguia/settings/dev.py` already whitelists `http://localhost:3000` in `CORS_ALLOWED_ORIGINS`, so no backend changes are needed for local dev.
+
+Auth uses JWT bearer tokens (no cookies): `AuthProvider` (`frontend/src/lib/auth-context.tsx`) stores the access/refresh pair in `localStorage` and attaches `Authorization: Bearer <access>` to every request via `frontend/src/lib/api.ts`.
+
+---
+
 ## Environment Variables
+
+### Backend
 
 Copy `.env.example` to `.env` and fill in the values.
 
@@ -324,6 +369,12 @@ Copy `.env.example` to `.env` and fill in the values.
 | `OPENAI_API_KEY` | Yes | — | OpenAI API key (`sk-...`) |
 | `ALLOWED_HOSTS` | Prod only | — | Comma-separated list of allowed hostnames |
 | `CORS_ALLOWED_ORIGINS` | Prod only | — | Comma-separated list of allowed CORS origins |
+
+### Frontend (`frontend/.env.example` → `frontend/.env.local`)
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `NEXT_PUBLIC_API_URL` | No | `http://localhost:8000` | Base URL of the Django backend. Exposed to the browser bundle — never put secrets here. |
 
 ---
 
@@ -386,5 +437,5 @@ DJANGO_SETTINGS_MODULE=cheguia.settings.prod python manage.py runserver
 | 4 | Done | pgvector RAG pipeline, HNSW index, document ingestion |
 | 5 | Done | Docker, docker-compose, Gunicorn |
 | 6 | Planned | Rate limiting, structured logging, Sentry |
-| 7 | Planned | Next.js frontend |
+| 7 | Done | Next.js frontend (`frontend/`) — auth, chat sessions, message thread |
 | 8 | Planned | User subscriptions and premium features |
