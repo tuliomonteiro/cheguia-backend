@@ -9,29 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import * as api from "./api";
-
-const STORAGE_KEY = "cheguia_tokens:v1";
-
-function readStoredTokens(): api.AuthTokens | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredTokens(tokens: api.AuthTokens | null) {
-  try {
-    if (tokens) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tokens));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  } catch {
-    // Storage unavailable (private browsing, quota, disabled) — auth just won't persist.
-  }
-}
+import * as tokenStore from "./token-store";
 
 interface AuthContextValue {
   user: api.User | null;
@@ -48,26 +26,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [user, setUser] = useState<api.User | null>(null);
   const [loading, setLoading] = useState(
-    () => typeof window !== "undefined" && readStoredTokens() !== null,
+    () => typeof window !== "undefined" && tokenStore.getTokens() !== null,
+  );
+
+  // Keep React state in sync with the token store: a background refresh
+  // rotates the access token, and a rejected refresh clears it (logout).
+  useEffect(
+    () =>
+      tokenStore.subscribe((tokens) => {
+        setAccessToken(tokens?.access ?? null);
+        if (!tokens) setUser(null);
+      }),
+    [],
   );
 
   useEffect(() => {
-    const tokens = readStoredTokens();
+    const tokens = tokenStore.getTokens();
     if (!tokens) return;
+    // getMe transparently refreshes an expired access token, so a returning
+    // user stays signed in for the refresh token's lifetime, not the access
+    // token's.
     api
       .getMe(tokens.access)
       .then((me) => {
-        setAccessToken(tokens.access);
+        setAccessToken(tokenStore.getTokens()?.access ?? tokens.access);
         setUser(me);
       })
-      .catch(() => writeStoredTokens(null))
+      .catch(() => tokenStore.setTokens(null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const tokens = await api.login(email, password);
     const me = await api.getMe(tokens.access);
-    writeStoredTokens(tokens);
+    tokenStore.setTokens(tokens);
     setAccessToken(tokens.access);
     setUser(me);
   }, []);
@@ -81,9 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    writeStoredTokens(null);
-    setAccessToken(null);
-    setUser(null);
+    tokenStore.setTokens(null);
   }, []);
 
   return (

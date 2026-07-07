@@ -1,3 +1,5 @@
+import * as tokenStore from "./token-store";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {
@@ -13,6 +15,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
   accessToken?: string,
+  isRetry = false,
 ): Promise<T> {
   const headers = new Headers({ "Content-Type": "application/json" });
   if (options.headers) {
@@ -23,6 +26,13 @@ async function request<T>(
   }
 
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+
+  // Expired access token on an authenticated call: refresh once and retry.
+  // Unauthenticated 401s (e.g. wrong login credentials) fall through.
+  if (res.status === 401 && accessToken && !isRetry) {
+    const fresh = await refreshSession();
+    if (fresh) return request(path, options, fresh, true);
+  }
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}) as Record<string, unknown>);
@@ -95,11 +105,43 @@ export function login(email: string, password: string): Promise<AuthTokens> {
   });
 }
 
-export function refreshAccessToken(refresh: string): Promise<{ access: string }> {
-  return request("/api/auth/token/refresh/", {
-    method: "POST",
-    body: JSON.stringify({ refresh }),
+// The backend rotates refresh tokens (ROTATE_REFRESH_TOKENS), so a successful
+// refresh returns a new pair; both are persisted before the caller retries.
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Exchange the stored refresh token for a new access token.
+ *
+ * Returns the new access token, or null when refresh is impossible.
+ * Concurrent callers share one in-flight refresh. Tokens are cleared
+ * (logging the user out) only when the backend definitively rejects the
+ * refresh token — never on transient network failures.
+ */
+export function refreshSession(): Promise<string | null> {
+  refreshInFlight ??= doRefresh().finally(() => {
+    refreshInFlight = null;
   });
+  return refreshInFlight;
+}
+
+async function doRefresh(): Promise<string | null> {
+  const tokens = tokenStore.getTokens();
+  if (!tokens) return null;
+
+  try {
+    const data = await request<{ access: string; refresh?: string }>(
+      "/api/auth/token/refresh/",
+      { method: "POST", body: JSON.stringify({ refresh: tokens.refresh }) },
+    );
+    const next = { access: data.access, refresh: data.refresh ?? tokens.refresh };
+    tokenStore.setTokens(next);
+    return next.access;
+  } catch (err) {
+    if (err instanceof ApiError && [400, 401, 403].includes(err.status)) {
+      tokenStore.setTokens(null);
+    }
+    return null;
+  }
 }
 
 export function getMe(accessToken: string): Promise<User> {
