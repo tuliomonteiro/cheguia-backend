@@ -347,6 +347,8 @@ npm run dev
 
 The UI will be available at **http://localhost:3000**. `cheguia/settings/dev.py` already whitelists `http://localhost:3000` in `CORS_ALLOWED_ORIGINS`, so no backend changes are needed for local dev.
 
+Assistant replies render as sanitized Markdown (GFM — lists, tables, links; raw HTML is escaped and `javascript:` URLs neutralised), and each reply's RAG citations appear as deduplicated links to the official sources (`set.gov.py`, `migraciones.gov.py`, …). User messages always render as plain text.
+
 Auth uses JWT bearer tokens (no cookies): the token pair lives in `frontend/src/lib/token-store.ts` (in-memory, persisted to `localStorage`), and `frontend/src/lib/api.ts` attaches `Authorization: Bearer <access>` to every request. When an authenticated request gets a 401 (access token expired — 60-minute lifetime), the client transparently refreshes via `/api/auth/token/refresh/`, stores the rotated pair, and retries the request once; concurrent requests share a single in-flight refresh. Only a definitively rejected refresh token logs the user out — transient network failures never do. `AuthProvider` (`frontend/src/lib/auth-context.tsx`) subscribes to the token store so rotated tokens propagate to React state and a rejected refresh redirects to `/login`.
 
 ---

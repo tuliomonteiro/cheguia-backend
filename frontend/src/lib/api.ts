@@ -75,7 +75,7 @@ export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
-  sources: unknown[];
+  sources: string[]; // RAG citation URLs, in retrieval order (may repeat)
   created_at: string;
 }
 

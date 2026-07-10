@@ -2,9 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import * as api from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+
+function sourceLabel(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
 
 export default function ChatPage() {
   const { user, accessToken, loading, logout } = useAuth();
@@ -138,6 +148,9 @@ export default function ChatPage() {
             <button
               key={s.id}
               onClick={() => {
+                // Re-selecting the active session must not clear the thread:
+                // the load effect only re-runs when the id actually changes.
+                if (s.id === activeSessionId) return;
                 setMessages([]);
                 setActiveSessionId(s.id);
               }}
@@ -164,16 +177,42 @@ export default function ChatPage() {
             {messages.map((m) => (
               <div
                 key={m.id}
-                className={`max-w-[80%] rounded-lg px-4 py-2 text-sm whitespace-pre-wrap ${
+                className={`max-w-[80%] rounded-lg px-4 py-2 text-sm ${
                   m.role === "user"
-                    ? "self-end bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
+                    ? "self-end whitespace-pre-wrap bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900"
                     : "self-start bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-zinc-50"
                 }`}
               >
-                {m.content}
+                {m.role === "assistant" ? (
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: (props) => (
+                          <a {...props} target="_blank" rel="noopener noreferrer" />
+                        ),
+                      }}
+                    >
+                      {m.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  m.content
+                )}
                 {m.sources.length > 0 && (
-                  <p className="mt-2 text-xs opacity-70">
-                    Sources: {m.sources.length}
+                  <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs opacity-80">
+                    <span>Sources:</span>
+                    {[...new Set(m.sources)].map((url) => (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:opacity-70"
+                      >
+                        {sourceLabel(url)}
+                      </a>
+                    ))}
                   </p>
                 )}
               </div>
