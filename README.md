@@ -217,6 +217,8 @@ All subsequent requests must include:
 Authorization: Bearer <access_token>
 ```
 
+Rate limits apply to every endpoint (see `THROTTLE_*` env vars); exceeding one returns `429 Too Many Requests` with a `Retry-After` header. Chat endpoints use the stricter `THROTTLE_CHAT` rate, and a throttled request is blocked before any AI call is made.
+
 ---
 
 ### Chat Sessions — `/api/`
@@ -397,6 +399,13 @@ Copy `.env.example` to `.env` and fill in the values.
 | `DB_HOST` | No | `localhost` | Database host (`db` when using docker-compose) |
 | `DB_PORT` | No | `5432` | Database port |
 | `OPENAI_API_KEY` | Yes | — | OpenAI API key (`sk-...`) |
+| `THROTTLE_ANON` | No | `30/min` | Global rate limit for unauthenticated requests |
+| `THROTTLE_USER` | No | `120/min` | Global rate limit for authenticated requests |
+| `THROTTLE_CHAT` | No | `15/min` | Stricter limit for AI-cost-bearing endpoints (`/api/chat/`, message posts) |
+| `LOG_LEVEL` | No | `INFO` | Root log level (logs are JSON lines; dev uses a plain formatter) |
+| `SENTRY_DSN` | No | `""` | Sentry error tracking — empty disables Sentry entirely |
+| `SENTRY_ENVIRONMENT` | No | `production` | Environment tag on Sentry events |
+| `SENTRY_TRACES_SAMPLE_RATE` | No | `0` | Sentry performance tracing sample rate (0 = off) |
 | `ALLOWED_HOSTS` | Prod only | — | Comma-separated list of allowed hostnames |
 | `CORS_ALLOWED_ORIGINS` | Prod only | — | Comma-separated list of allowed CORS origins |
 
@@ -466,6 +475,6 @@ DJANGO_SETTINGS_MODULE=cheguia.settings.prod python manage.py runserver
 | 3 | Done | OpenAI integration with per-error HTTP handling |
 | 4 | Done | pgvector RAG pipeline, HNSW index, document ingestion |
 | 5 | Done | Docker, docker-compose, Gunicorn |
-| 6 | Planned | Rate limiting, structured logging, Sentry |
+| 6 | Done | Rate limiting, structured logging, Sentry (opt-in via `SENTRY_DSN`) |
 | 7 | Done | Next.js frontend (`frontend/`) — auth, chat sessions, message thread |
 | 8 | Planned | User subscriptions and premium features |

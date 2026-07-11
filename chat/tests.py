@@ -1,12 +1,14 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from ai.exceptions import AIServiceError
+from api.tests import throttle_rate
 from chat.models import ChatSession, Message
 from users.models import User
 
@@ -143,3 +145,27 @@ class MessageTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         mock_ai.assert_not_called()
+
+
+@throttle_rate
+class MessageThrottleTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            email='ana@test.local', username='ana', password='S3nha-forte-123!'
+        )
+        self.session = ChatSession.objects.create(user=self.user)
+        self.client.force_authenticate(self.user)
+
+    @patch('chat.views.get_response', return_value=AI_RESULT)
+    def test_message_posts_over_the_chat_rate_get_429(self, mock_ai):
+        url = messages_url(self.session.id)
+        for _ in range(2):
+            self.assertEqual(self.client.post(url, {'content': 'oi'}).status_code, 201)
+
+        response = self.client.post(url, {'content': 'oi'})
+
+        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertEqual(mock_ai.call_count, 2)
+        # A throttled turn leaves no orphan user message behind.
+        self.assertEqual(self.session.messages.count(), 4)

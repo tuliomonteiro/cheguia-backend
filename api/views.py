@@ -1,9 +1,10 @@
 from rest_framework import serializers, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from ai.exceptions import AIServiceError
 from ai.service import get_response
+from .throttling import ChatRateThrottle
 
 
 class ChatRequestSerializer(serializers.Serializer):
@@ -11,6 +12,7 @@ class ChatRequestSerializer(serializers.Serializer):
 
 
 @api_view(['POST'])
+@throttle_classes([ChatRateThrottle])
 def chat(request):
     """
     Stateless quick-chat endpoint (no session history).

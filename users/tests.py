@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -22,6 +23,9 @@ def register_payload(**overrides):
 
 
 class RegisterTests(APITestCase):
+    def setUp(self):
+        cache.clear()  # anon throttle counters persist in LocMem across tests
+
     def test_register_creates_user(self):
         response = self.client.post(REGISTER, register_payload(language_preference='pt'))
 
@@ -51,6 +55,7 @@ class RegisterTests(APITestCase):
 
 class TokenTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email='ana@test.local', username='ana', password='S3nha-forte-123!'
         )
@@ -87,6 +92,7 @@ class TokenTests(APITestCase):
 
 class MeTests(APITestCase):
     def setUp(self):
+        cache.clear()
         self.user = User.objects.create_user(
             email='ana@test.local', username='ana', password='S3nha-forte-123!'
         )

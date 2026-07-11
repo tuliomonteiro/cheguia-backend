@@ -1,10 +1,11 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from ai.exceptions import AIServiceError
 from ai.service import get_response
+from api.throttling import ChatRateThrottle
 from .models import ChatSession, Message
 from .serializers import ChatSessionSerializer, ChatSessionDetailSerializer, MessageSerializer
 
@@ -36,6 +37,7 @@ def session_detail(request, session_id):
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ChatRateThrottle])
 def message_list_create(request, session_id):
     session = get_object_or_404(ChatSession, id=session_id, user=request.user)
 

@@ -15,3 +15,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.AllowAny',
     ],
 }
+
+# Human-readable logs locally; production keeps the JSON formatter.
+LOGGING['handlers']['console']['formatter'] = 'plain'  # noqa: F821
