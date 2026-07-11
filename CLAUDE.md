@@ -43,10 +43,9 @@ Contracts hiding in the code that you must preserve:
 - **`AIInteraction` (`ai/models.py`) is a dead model** — defined and migrated, but nothing
   writes to it. Don't assume analytics exist; don't wire writes to it without being asked.
 
-**Trap:** `cheguia/cheguia/` (nested, with its own `settings.py`) is a stale scaffolding
-artifact. The live settings tree is `cheguia/settings/`. Never edit anything under
-`cheguia/cheguia/`; if you touch settings, confirm your path contains `cheguia/settings/`.
-(Deleting `cheguia/cheguia/` in a cleanup PR is welcome.)
+The live settings tree is `cheguia/settings/`. (A stale nested `cheguia/cheguia/`
+scaffolding tree used to shadow it — deleted in 2026; if you see it reappear in an old
+branch, do not edit it.)
 
 `ARCHITECTURE.md` predates the current code (it still describes the pre-adapter design).
 `README.md` is current. When they disagree, trust README and the code.
@@ -146,8 +145,8 @@ These are the specific mistakes a model will make in this repo. Each has one rul
    Absent all three, do not touch embedding settings. (This is escalation-worthy — §6.)
 
 6. **Editing the wrong settings tree.** **Rule:** live settings are
-   `cheguia/settings/{base,dev,prod}.py`. `cheguia/cheguia/` is dead scaffolding — never
-   edit it.
+   `cheguia/settings/{base,dev,prod}.py` — nothing else. (The stale `cheguia/cheguia/`
+   scaffolding this rule used to guard against was deleted in 2026.)
 
 7. **Confusing dev-open endpoints with public endpoints.** In dev everything is
    `AllowAny` by default, so "it worked without a token" proves nothing. **Rule:**
