@@ -98,6 +98,20 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
+    # Throttle state lives in Django's cache (LocMem by default), so counts
+    # are per-process: with several gunicorn workers the effective limit is
+    # roughly rate × workers. Good enough until a shared cache is added.
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': os.getenv('THROTTLE_ANON', '30/min'),
+        'user': os.getenv('THROTTLE_USER', '120/min'),
+        # AI-cost-bearing endpoints (api.chat, chat message post) opt into
+        # this stricter scope via api.throttling.ChatRateThrottle.
+        'chat': os.getenv('THROTTLE_CHAT', '15/min'),
+    },
 }
 
 SIMPLE_JWT = {
@@ -121,3 +135,49 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
 CORS_ALLOW_CREDENTIALS = True
+
+# Structured logging: JSON lines on stdout so log aggregators can parse
+# fields without regexes. dev.py swaps the formatter for a readable one.
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'json': {
+            '()': 'pythonjsonlogger.json.JsonFormatter',
+            'format': '%(asctime)s %(levelname)s %(name)s %(message)s',
+        },
+        'plain': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'json',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
+    },
+    'loggers': {
+        'django': {'level': LOG_LEVEL},
+        'ai': {'level': LOG_LEVEL},
+    },
+}
+
+# Error tracking is opt-in: without SENTRY_DSN in the environment nothing is
+# initialized and no data leaves the process. Never commit a DSN default.
+SENTRY_DSN = os.getenv('SENTRY_DSN', '')
+if SENTRY_DSN:
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=SENTRY_DSN,
+        environment=os.getenv('SENTRY_ENVIRONMENT', 'production'),
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_SAMPLE_RATE', '0')),
+        send_default_pii=False,
+    )
