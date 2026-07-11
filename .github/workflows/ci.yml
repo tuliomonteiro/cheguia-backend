@@ -1,0 +1,60 @@
+# Backend tests run under cheguia.settings.base so the IsAuthenticated
+# default is in force — a green run here is evidence about real auth
+# behavior, unlike dev's AllowAny (CLAUDE.md §4.7).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: paraguay_guide
+          POSTGRES_USER: cheguia
+          POSTGRES_PASSWORD: cheguia_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cheguia -d paraguay_guide"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DJANGO_SETTINGS_MODULE: cheguia.settings.base
+      SECRET_KEY: ci-only-not-a-real-secret
+      DB_NAME: paraguay_guide
+      DB_USER: cheguia
+      DB_PASSWORD: cheguia_dev
+      DB_HOST: localhost
+      DB_PORT: "5432"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - run: python manage.py test --verbosity 2
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

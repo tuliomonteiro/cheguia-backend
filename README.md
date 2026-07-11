@@ -370,6 +370,11 @@ requirement as `migrate`).
 python manage.py test           # inside docker: docker compose exec web python manage.py test
 ```
 
+CI (`.github/workflows/ci.yml`) runs the suite on every PR and push to `main`
+against a pgvector service container — under `cheguia.settings.base`, so the
+`IsAuthenticated` default is in force — plus `eslint` and `next build` for the
+frontend.
+
 Note: `api/chat/`'s permission is deliberately settings-dependent (open in dev,
 JWT in base/prod), so its tests assert behavior, not auth; endpoints with
 explicit `IsAuthenticated` decorators are tested for auth under any settings.
