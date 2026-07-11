@@ -17,6 +17,7 @@ This repo contains both the Django backend (root) and the Next.js frontend (`fro
   - [With Docker (recommended)](#with-docker-recommended)
   - [Without Docker](#without-docker)
   - [Frontend (Next.js)](#frontend-nextjs)
+- [Tests](#tests)
 - [Environment Variables](#environment-variables)
 - [Knowledge Base](#knowledge-base)
 - [Settings](#settings)
@@ -352,6 +353,26 @@ Assistant replies render as sanitized Markdown (GFM — lists, tables, links; ra
 The UI is localized to Portuguese and Spanish (`frontend/src/lib/i18n.ts`): a logged-in user's `language_preference` wins; before login the browser language decides, with Spanish as the fallback (matching the backend default). The register form includes a language selector that persists the choice to the backend. Sessions can be deleted from the sidebar (hover → ✕, with confirmation).
 
 Auth uses JWT bearer tokens (no cookies): the token pair lives in `frontend/src/lib/token-store.ts` (in-memory, persisted to `localStorage`), and `frontend/src/lib/api.ts` attaches `Authorization: Bearer <access>` to every request. When an authenticated request gets a 401 (access token expired — 60-minute lifetime), the client transparently refreshes via `/api/auth/token/refresh/`, stores the rotated pair, and retries the request once; concurrent requests share a single in-flight refresh. Only a definitively rejected refresh token logs the user out — transient network failures never do. `AuthProvider` (`frontend/src/lib/auth-context.tsx`) subscribes to the token store so rotated tokens propagate to React state and a rejected refresh redirects to `/login`.
+
+---
+
+## Tests
+
+The backend has an `APITestCase`/`SimpleTestCase` suite in each app's `tests.py`
+(auth, sessions/messages, quick chat, AI service contracts, embedding cache,
+pgvector retrieval, KB ingestion). AI is mocked at the seam — `get_response`
+in view tests, the provider's `complete`/`embed` in service tests — so the
+suite never hits a real AI API. The pgvector tests run against the real test
+database, so Postgres with the `vector` extension must be reachable (same
+requirement as `migrate`).
+
+```bash
+python manage.py test           # inside docker: docker compose exec web python manage.py test
+```
+
+Note: `api/chat/`'s permission is deliberately settings-dependent (open in dev,
+JWT in base/prod), so its tests assert behavior, not auth; endpoints with
+explicit `IsAuthenticated` decorators are tested for auth under any settings.
 
 ---
 
