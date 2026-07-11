@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
@@ -143,15 +144,23 @@ export default function ChatPage() {
     <div className="flex flex-1 overflow-hidden bg-zinc-50 dark:bg-black">
       <aside className="flex w-64 shrink-0 flex-col border-r border-black/10 bg-white dark:border-white/10 dark:bg-zinc-900">
         <div className="flex items-center justify-between border-b border-black/10 p-4 dark:border-white/10">
-          <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+          <span className="min-w-0 truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
             {user.email}
           </span>
-          <button
-            onClick={logout}
-            className="text-xs font-medium text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-200"
-          >
-            {t.signOut}
-          </button>
+          <span className="flex shrink-0 gap-3">
+            <Link
+              href="/settings"
+              className="text-xs font-medium text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-200"
+            >
+              {t.settings}
+            </Link>
+            <button
+              onClick={logout}
+              className="text-xs font-medium text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-200"
+            >
+              {t.signOut}
+            </button>
+          </span>
         </div>
 
         <button

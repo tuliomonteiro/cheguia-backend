@@ -113,3 +113,87 @@ class MeTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['email'], 'ana@test.local')
+
+
+PASSWORD_CHANGE = reverse('auth-password-change')
+
+
+class UpdateMeTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            email='ana@test.local', username='ana', password='S3nha-forte-123!',
+            language_preference='es',
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_patch_updates_language_preference(self):
+        response = self.client.patch(ME, {'language_preference': 'pt'})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['language_preference'], 'pt')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.language_preference, 'pt')
+
+    def test_patch_cannot_change_email(self):
+        response = self.client.patch(ME, {'email': 'outro@test.local'})
+
+        # Unknown/immutable fields are ignored, not applied.
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'ana@test.local')
+
+    def test_invalid_language_rejected(self):
+        response = self.client.patch(ME, {'language_preference': 'en'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_requires_authentication(self):
+        self.client.force_authenticate(None)
+        response = self.client.patch(ME, {'language_preference': 'pt'})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class PasswordChangeTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.user = User.objects.create_user(
+            email='ana@test.local', username='ana', password='S3nha-forte-123!'
+        )
+        self.client.force_authenticate(self.user)
+
+    def _change(self, current='S3nha-forte-123!', new='N0va-senha-456!', new2=None):
+        return self.client.post(PASSWORD_CHANGE, {
+            'current_password': current,
+            'new_password': new,
+            'new_password2': new2 if new2 is not None else new,
+        })
+
+    def test_change_password_and_login_with_new_one(self):
+        response = self._change()
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        self.client.force_authenticate(None)
+        old = self.client.post(TOKEN, {'email': 'ana@test.local', 'password': 'S3nha-forte-123!'})
+        new = self.client.post(TOKEN, {'email': 'ana@test.local', 'password': 'N0va-senha-456!'})
+        self.assertEqual(old.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(new.status_code, status.HTTP_200_OK)
+
+    def test_wrong_current_password_rejected(self):
+        response = self._change(current='errada')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('current_password', response.data)
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('S3nha-forte-123!'))
+
+    def test_mismatched_new_passwords_rejected(self):
+        response = self._change(new2='D1ferente-789!')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_new_password_rejected(self):
+        response = self._change(new='123', new2='123')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_requires_authentication(self):
+        self.client.force_authenticate(None)
+        self.assertEqual(self._change().status_code, status.HTTP_401_UNAUTHORIZED)

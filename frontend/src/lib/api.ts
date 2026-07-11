@@ -148,6 +148,34 @@ export function getMe(accessToken: string): Promise<User> {
   return request("/api/auth/me/", {}, accessToken);
 }
 
+export function updateMe(
+  accessToken: string,
+  data: { username?: string; language_preference?: string },
+): Promise<User> {
+  return request(
+    "/api/auth/me/",
+    { method: "PATCH", body: JSON.stringify(data) },
+    accessToken,
+  );
+}
+
+export interface PasswordChangeInput {
+  current_password: string;
+  new_password: string;
+  new_password2: string;
+}
+
+export function changePassword(
+  accessToken: string,
+  data: PasswordChangeInput,
+): Promise<void> {
+  return request(
+    "/api/auth/password/change/",
+    { method: "POST", body: JSON.stringify(data) },
+    accessToken,
+  );
+}
+
 export function listSessions(accessToken: string): Promise<ChatSession[]> {
   return request("/api/sessions/", {}, accessToken);
 }

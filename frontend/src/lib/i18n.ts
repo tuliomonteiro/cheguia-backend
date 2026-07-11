@@ -40,6 +40,18 @@ export interface Messages {
   registerFailed: string;
   haveAccount: string;
   signInLink: string;
+  // settings
+  settings: string;
+  backToChat: string;
+  languageSaved: string;
+  changePasswordTitle: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+  passwordChanged: string;
+  passwordChangeFailed: string;
+  save: string;
+  saving: string;
 }
 
 const MESSAGES: Record<Lang, Messages> = {
@@ -76,6 +88,17 @@ const MESSAGES: Record<Lang, Messages> = {
     registerFailed: "Não foi possível criar a conta.",
     haveAccount: "Já tem uma conta?",
     signInLink: "Entrar",
+    settings: "Configurações",
+    backToChat: "← Voltar ao chat",
+    languageSaved: "Idioma atualizado.",
+    changePasswordTitle: "Alterar senha",
+    currentPassword: "Senha atual",
+    newPassword: "Nova senha",
+    confirmNewPassword: "Confirme a nova senha",
+    passwordChanged: "Senha alterada com sucesso.",
+    passwordChangeFailed: "Não foi possível alterar a senha.",
+    save: "Salvar",
+    saving: "Salvando…",
   },
   es: {
     signOut: "Salir",
@@ -110,6 +133,17 @@ const MESSAGES: Record<Lang, Messages> = {
     registerFailed: "No se pudo crear la cuenta.",
     haveAccount: "¿Ya tenés cuenta?",
     signInLink: "Iniciar sesión",
+    settings: "Configuración",
+    backToChat: "← Volver al chat",
+    languageSaved: "Idioma actualizado.",
+    changePasswordTitle: "Cambiar contraseña",
+    currentPassword: "Contraseña actual",
+    newPassword: "Nueva contraseña",
+    confirmNewPassword: "Confirmá la nueva contraseña",
+    passwordChanged: "Contraseña cambiada con éxito.",
+    passwordChangeFailed: "No se pudo cambiar la contraseña.",
+    save: "Guardar",
+    saving: "Guardando…",
   },
 };
 
