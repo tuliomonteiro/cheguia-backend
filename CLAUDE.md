@@ -47,8 +47,9 @@ The live settings tree is `cheguia/settings/`. (A stale nested `cheguia/cheguia/
 scaffolding tree used to shadow it — deleted in 2026; if you see it reappear in an old
 branch, do not edit it.)
 
-`ARCHITECTURE.md` predates the current code (it still describes the pre-adapter design).
-`README.md` is current. When they disagree, trust README and the code.
+`ARCHITECTURE.md` was rewritten in 2026 to describe the system as built (request flow,
+adapter pattern, data model, invariants). `README.md` covers setup and API usage. If
+either disagrees with the code, the code wins — and fix the doc in the same PR.
 
 ## 2. Running and verifying
 

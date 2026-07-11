@@ -1,332 +1,185 @@
-# AI-Powered Paraguay Newcomer App - System Architecture
+# Cheguia — System Architecture
 
-## 🎯 Project Overview
-**Goal**: Help newcomers (mainly Brazilians) get AI-assisted guidance on Paraguayan bureaucracy, documents, and local adaptation via a chat-based interface with localized information.
+Cheguia helps Brazilians and other newcomers navigate Paraguayan bureaucracy
+(immigration, SET/RUC taxes, ANDE, banking) through a chat assistant whose answers are
+grounded in a curated knowledge base and cited to official sources.
 
-**Tech Stack**: Django Backend + Next.js Frontend + PostgreSQL with pgvector
+This document describes the system **as built**. For setup, API examples, and env-var
+tables see `README.md`; for contributor rules and known traps see `CLAUDE.md`.
 
----
+## Components
 
-## 🏗️ System Architecture
+| Component | Where | What |
+|---|---|---|
+| Backend | repo root | Django 4.2 + DRF; JWT auth, chat sessions, RAG pipeline, provider adapters |
+| Frontend | `frontend/` | Next.js 16 (App Router, React 19, TS, Tailwind 4); deployed independently |
+| Database | PostgreSQL + pgvector | Relational data + 1536-dim vectors, HNSW-indexed |
+| AI providers | OpenAI (chat + embeddings), Gemini (chat) | Behind an adapter registry — nothing else knows SDKs |
+| CI | `.github/workflows/ci.yml` | Backend tests (pgvector service container, `base` settings) + frontend lint/build on every PR |
 
-### Backend (Django) - Core AI & Data Layer
-**Location**: `/cheguia-backend/`
-**Purpose**: Handle AI processing, data management, and business logic
-
-#### Apps Structure:
-```
-cheguia-backend/
-├── ai/           # AI processing, embeddings, RAG
-├── chat/         # Chat history, sessions, messages
-├── documents/    # Document templates, knowledge base
-├── users/        # User management, authentication
-└── api/          # REST API endpoints
-```
-
-#### Core Responsibilities:
-- **AI Processing**: LangChain + OpenAI integration
-- **RAG System**: Document retrieval and context building
-- **Chat Management**: Message history, sessions, user context
-- **Document Templates**: Dynamic document generation
-- **User Management**: Authentication, progress tracking
-- **Knowledge Base**: Document storage and vector embeddings
-
-### Frontend (Next.js) - User Interface
-**Location**: `/cheguia-frontend/` (to be created)
-**Purpose**: User interface and user experience
-
-#### Features:
-- Chat interface with message bubbles
-- Document template generator
-- Progress tracking dashboard
-- Language switcher (Spanish/Portuguese)
-- User authentication UI
-- Mobile-responsive design
-
-### Database (PostgreSQL + pgvector)
-**Purpose**: Store all application data including vector embeddings
-
-#### Key Tables:
-- **Users**: Authentication, preferences, subscription status
-- **Chats**: Chat sessions and message history
-- **Documents**: Knowledge base documents and metadata
-- **Document_embeddings**: Vector embeddings for RAG
-- **Templates**: Document templates for generation
-- **User_progress**: Checklist progress and completion
-
----
-
-## 🔧 Technical Implementation
-
-### Django Backend Configuration
-
-#### Settings Updates Needed:
-```python
-# settings.py additions
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'rest_framework',
-    'corsheaders',
-    'ai',
-    'chat', 
-    'documents',
-    'users',
-    'api',
-]
-
-MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'paraguay_guide',
-        'USER': 'postgres',
-        'PASSWORD': 'your_password',
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
-}
-
-# CORS for Next.js frontend
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",  # Next.js dev
-    "https://yourdomain.com", # Production
-]
-```
-
-#### API Endpoints Structure:
-```
-/api/
-├── auth/           # Authentication endpoints
-├── chat/           # Chat functionality
-├── documents/      # Document management
-├── templates/      # Template generation
-├── users/          # User management
-└── ai/             # AI processing endpoints
-```
-
-### PostgreSQL + pgvector Setup
-
-#### Required Extensions:
-```sql
--- Enable vector extension
-CREATE EXTENSION IF NOT EXISTS vector;
-
--- Enable UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-```
-
-#### Key Database Schema:
-```sql
--- Documents table with vector embeddings
-CREATE TABLE documents (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    title VARCHAR(500) NOT NULL,
-    content TEXT NOT NULL,
-    source_url VARCHAR(1000),
-    document_type VARCHAR(100),
-    language VARCHAR(10),
-    created_at TIMESTAMP DEFAULT NOW(),
-    embedding vector(1536) -- OpenAI embedding dimension
-);
-
--- Chat sessions
-CREATE TABLE chat_sessions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id),
-    title VARCHAR(200),
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Messages
-CREATE TABLE messages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    session_id UUID REFERENCES chat_sessions(id),
-    role VARCHAR(20) NOT NULL, -- 'user' or 'assistant'
-    content TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-```
-
----
-
-## 🚀 Development Phases
-
-### Phase 1: Foundation (Week 1)
-**Backend Tasks:**
-- [ ] Set up PostgreSQL with pgvector
-- [ ] Configure Django settings for new apps
-- [ ] Create basic models for users, chats, documents
-- [ ] Set up LangChain + OpenAI integration
-- [ ] Create basic chat API endpoint
-
-**Frontend Tasks:**
-- [ ] Create Next.js project with TypeScript
-- [ ] Set up Tailwind CSS and basic UI components
-- [ ] Create chat interface mockup
-- [ ] Connect to Django API
-
-### Phase 2: RAG Integration (Week 2)
-**Backend Tasks:**
-- [ ] Implement document embedding system
-- [ ] Create RAG pipeline with vector similarity search
-- [ ] Add document ingestion from Paraguay sources
-- [ ] Implement source citation in responses
-- [ ] Add language detection and localization
-
-**Frontend Tasks:**
-- [ ] Enhance chat UI with message bubbles
-- [ ] Add source citations display
-- [ ] Implement language switcher
-- [ ] Add loading states and error handling
-
-### Phase 3: Document Features (Week 3)
-**Backend Tasks:**
-- [ ] Create document template system
-- [ ] Implement dynamic template filling
-- [ ] Add checklist generation based on visa types
-- [ ] Create translation service (Portuguese ↔ Spanish)
-
-**Frontend Tasks:**
-- [ ] Build document template interface
-- [ ] Add checklist progress tracking
-- [ ] Implement template download functionality
-- [ ] Create progress dashboard
-
-### Phase 4: Polish & Launch (Week 4)
-**Backend Tasks:**
-- [ ] Add user authentication (Supabase or Django Auth)
-- [ ] Implement subscription/premium features
-- [ ] Add chat history and user progress storage
-- [ ] Set up production database and environment
-
-**Frontend Tasks:**
-- [ ] Add authentication UI
-- [ ] Implement premium feature gates
-- [ ] Add feedback system (thumbs up/down)
-- [ ] Mobile optimization and testing
-
----
-
-## 🔐 Environment Variables
-
-### Django Backend (.env)
-```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/paraguay_guide
-
-# OpenAI
-OPENAI_API_KEY=your_openai_key
-
-# Django
-SECRET_KEY=your_django_secret_key
-DEBUG=True
-
-# CORS
-ALLOWED_HOSTS=localhost,127.0.0.1,yourdomain.com
-
-# Supabase (if using for auth)
-SUPABASE_URL=your_supabase_url
-SUPABASE_KEY=your_supabase_anon_key
-```
-
-### Next.js Frontend (.env.local)
-```bash
-# API
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
-NEXT_PUBLIC_WS_URL=ws://localhost:8000/ws
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# Stripe (for payments)
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_key
-```
-
----
-
-## 📁 Project Structure
+## Anatomy of a chat turn
 
 ```
-paraguay-project/
-├── cheguia-backend/          # Django backend
-│   ├── ai/                   # AI processing
-│   ├── chat/                 # Chat functionality  
-│   ├── documents/            # Document management
-│   ├── users/                # User management
-│   ├── api/                  # REST API
-│   ├── cheguia/              # Django settings
-│   ├── requirements.txt      # Python dependencies
-│   └── manage.py
-├── cheguia-frontend/         # Next.js frontend (to create)
-│   ├── app/                  # App Router
-│   ├── components/           # React components
-│   ├── lib/                  # Utilities
-│   ├── public/               # Static assets
-│   └── package.json
-├── data/                     # Knowledge base documents
-│   ├── migraciones/          # Immigration docs
-│   ├── set/                  # Tax authority docs
-│   └── ande/                 # Electric company docs
-└── docs/                     # Documentation
-    └── ARCHITECTURE.md       # This file
+POST /api/sessions/{id}/messages/   (Authorization: Bearer <access>)
+  │
+  ├─ JWT authentication (simplejwt) → 401 if invalid/expired
+  ├─ ChatRateThrottle ('chat' scope, default 15/min) → 429 BEFORE any AI spend
+  ├─ Ownership check (session belongs to user) → 404 otherwise
+  ├─ Serializer validation → 400
+  │
+  ├─ user Message row created
+  ├─ history = last 10 messages of the session (oldest first)
+  │
+  ├─ ai.service.get_response(content, history)
+  │     ├─ _try_rag(): embed query → cosine search → (context, sources)
+  │     │     └─ ANY failure logs + degrades to ("", []) — RAG is never fatal
+  │     ├─ _build_messages(): system prompt (+context), history capped at 10,
+  │     │     roles other than user/assistant silently dropped
+  │     └─ provider.complete(messages)  — 30s timeout
+  │           └─ SDK errors → AIServiceError(message, status_code)
+  │
+  ├─ on AIServiceError: user Message DELETED (no orphan turn),
+  │     response = {'error': str} with the adapter's status code
+  └─ on success: assistant Message stored (content + sources),
+        session auto-titled from first user message (content[:80]),
+        201 with {'user': …, 'assistant': …}
 ```
 
----
+`POST /api/chat/` is the stateless variant: same service call, no session, no history.
 
-## 🔄 Data Flow
+## AI layer
 
-1. **User Input** → Next.js Frontend
-2. **API Request** → Django Backend
-3. **Query Processing** → AI App (LangChain)
-4. **Document Retrieval** → RAG System (pgvector)
-5. **Context Building** → Relevant documents + embeddings
-6. **AI Response** → OpenAI with context
-7. **Response** → Django → Next.js → User
+**Adapter pattern.** `ai/providers/base.py` defines `ChatProvider.complete(messages) ->
+ChatResult(content, tokens_used)` and `EmbeddingProvider.embed(text) -> list[float]`
+(with a `dimensions` class attribute). Concrete adapters (`openai_provider.py`,
+`gemini_provider.py`) are known only to the registry in `ai/providers/__init__.py`,
+selected by `AI_CHAT_PROVIDER` / `AI_EMBEDDING_PROVIDER`. AI SDK imports are legal only
+inside `ai/providers/` — everything else calls `ai.service.get_response()` or
+`ai.embeddings.get_embedding()`.
 
----
+**Error contract.** Adapters map every SDK error to `AIServiceError(message,
+status_code)`: auth → 500, rate limit → 429, timeout/connection/API → 503. Views catch
+exactly that exception; a raw provider stack trace never reaches a client.
 
-## 🎯 Success Metrics
+**Prompting.** The system prompt (Portuguese, in `ai/service.py`) instructs the model to
+answer in the user's language (Portuguese or Spanish) and cite sources. Retrieved
+context is appended to the system prompt, never interleaved with history.
 
-- **Response Accuracy**: AI provides correct, source-cited information
-- **User Engagement**: Users complete document checklists
-- **Performance**: <2s response time for chat queries
-- **Scalability**: Handle 100+ concurrent users
-- **Localization**: Seamless Spanish/Portuguese experience
+**Embeddings + cache.** `ai/embeddings.py` caches vectors in `EmbeddingCache` keyed by
+SHA-256 of the text. `model_used` is stored but **not part of the key** — switching
+embedding models without clearing the cache silently mixes embedding spaces (see
+CLAUDE.md §4.5 for the required migration procedure).
 
----
+**Retrieval** (`ai/rag.py`): top-5 by cosine distance over `documents.embedding_vector`
+(HNSW index, `vector_cosine_ops`), relevance threshold 0.3 (distance; lower = closer),
+context budget 4000 chars. Embedding text at ingest is `title + "\n\n" + content`, so
+titles participate in retrieval. `source_url`s of the retrieved documents come back to
+the client as citations.
 
-## 🚀 Deployment Strategy
+## Data model
 
-### Development
-- Django: `python manage.py runserver`
-- Next.js: `npm run dev`
-- PostgreSQL: Local instance with pgvector
+| Table | Model | Notes |
+|---|---|---|
+| `users` | `users.User` | Custom user: UUID pk, unique email as login, `language_preference` (`es`/`pt`, default `es`), `is_premium` (stored, not yet used by any feature) |
+| `chat_sessions` | `chat.ChatSession` | UUID pk, FK user, auto-title, ordered `-updated_at` |
+| `messages` | `chat.Message` | role user/assistant/system, `sources` JSON list of URLs, ordered `created_at` |
+| `documents` | `documents.Document` | KB entry: `document_type` ∈ immigration/tax/utilities/banking/general, `language` ∈ es/pt/gu, `VectorField(dimensions=1536)` |
+| `document_templates` | `documents.DocumentTemplate` | Defined and migrated; no feature uses it yet |
+| `embedding_cache` | `ai.EmbeddingCache` | SHA-256 → vector (+ `model_used`) |
+| `ai_interactions` | `ai.AIInteraction` | **Dead model** — migrated, nothing writes to it |
 
-### Production
-- Django: AWS EC2 or Railway
-- Next.js: Vercel deployment
-- PostgreSQL: AWS RDS with pgvector extension
-- Static Files: AWS S3
-- Domain: Custom domain with SSL
+All models follow the house style: UUID pk, explicit `db_table`, explicit ordering,
+`created_at`/`updated_at`, `__str__`.
 
----
+Vector schema changes follow `documents/migrations/0002_vectorfield.py`: `RunSQL` with
+explicit `reverse_sql`, `CREATE EXTENSION IF NOT EXISTS vector` before first use, an
+HNSW index per searchable column, and cross-app migration dependencies (`ai/0002`
+depends on `documents/0002`).
 
-*This architecture document should be updated as the project evolves and requirements change.*
+## API surface
+
+| Endpoint | Auth | Throttle | Purpose |
+|---|---|---|---|
+| `POST /api/auth/register/` | public | anon | Create account (email login, `language_preference`) |
+| `POST /api/auth/token/` | public | anon | JWT pair (60-min access, 7-day rotating refresh) |
+| `POST /api/auth/token/refresh/` | public | anon | New access + rotated refresh |
+| `GET /api/auth/me/` | JWT | user | Profile |
+| `GET/POST /api/sessions/` | JWT | user | List/create own sessions |
+| `GET/DELETE /api/sessions/{id}/` | JWT | user | Detail with messages / delete (cross-user → 404) |
+| `GET/POST /api/sessions/{id}/messages/` | JWT | **chat** | History / send a turn |
+| `POST /api/chat/` | settings-dependent¹ | **chat** | Stateless quick chat |
+| `GET /api/health/` | public | anon | Liveness |
+
+¹ Deliberately carries no permission decorator: `IsAuthenticated` under `base`/`prod`
+settings, `AllowAny` under `dev` (CLAUDE.md §4.7). Endpoints meant to be public carry an
+explicit `AllowAny`.
+
+Views are function-based (`@api_view` + decorators), validation via serializers —
+no ViewSets, routers, signals, or celery.
+
+**Rate limiting**: DRF throttling — anon 30/min, user 120/min, chat scope 15/min
+(`THROTTLE_*` env vars). `@throttle_classes` *replaces* the defaults on the chat
+endpoints, so the chat scope is their only limit; it fires before the view body, so a
+throttled request costs no AI money. Counters live in the default LocMem cache —
+per-process, so the effective limit is ≈ rate × gunicorn workers until a shared cache
+(e.g. Redis) is introduced.
+
+## Frontend
+
+`frontend/src/lib/` is the integration layer:
+
+- **`api.ts`** — typed fetch client for every endpoint. On a 401 from an authenticated
+  call it refreshes the token once (single-flight across concurrent requests, rotated
+  pair persisted before retry) and replays the request; unauthenticated 401s (bad
+  credentials) pass through.
+- **`token-store.ts`** — sole owner of the JWT pair: in-memory source of truth,
+  best-effort `localStorage` persistence, change subscription. Only a definitively
+  rejected refresh token clears it (= logout); network blips never do.
+- **`auth-context.tsx`** — React state synced to the token store; login/register/logout.
+- **`i18n.ts`** — pt/es dictionaries. Logged-in user's `language_preference` wins,
+  browser language before login, Spanish fallback (matches backend default);
+  hydration-safe via `useSyncExternalStore`.
+
+Pages: chat (`app/page.tsx` — session sidebar with delete, optimistic sends with
+rollback), login, register (with language selector persisted to the backend). Assistant
+replies render as sanitized GFM Markdown (react-markdown: raw HTML escaped,
+`javascript:` URLs neutralized); RAG sources render as deduplicated links labeled by
+hostname. User messages stay plain text.
+
+## Operations
+
+**Settings** (`cheguia/settings/`): `base.py` holds everything incl. `IsAuthenticated`
+default and JWT config; `dev.py` opens permissions (`AllowAny`) and uses readable logs;
+`prod.py` hard-requires `ALLOWED_HOSTS`/`CORS_ALLOWED_ORIGINS` from env. Secrets come
+from env only (`SECRET_KEY` crashes if missing). Anything verified unauthenticated under
+dev proves nothing about auth.
+
+**Logging**: JSON lines on stdout (`python-json-logger`), level via `LOG_LEVEL`; dev
+swaps in a plain formatter. **Sentry** initializes only when `SENTRY_DSN` is set —
+otherwise the SDK is never imported; `send_default_pii=False`, tracing off by default.
+
+**Runtime**: docker-compose runs `pgvector/pgvector:pg16` (+healthcheck) and the web
+container (dev settings, source bind-mounted). `docker/entrypoint.sh` polls the DB (30 ×
+2s), runs `migrate --noinput`, then execs gunicorn. Gunicorn: sync workers
+(`min(2×CPU+1, 9)`), `timeout = 120` — deliberately above the 30s provider timeout;
+raising one means checking the other.
+
+**Ingestion**: `python manage.py ingest_documents --sample|--file docs.json
+[--update]` is the only sanctioned KB loader. Rows match by exact title: same title
+without `--update` is skipped; a changed title creates a new row and orphans the old one
+(delete explicitly when renaming).
+
+**Tests**: 46 across the five apps' `tests.py`, AI mocked at the seams
+(`get_response` in view tests, provider `complete`/`embed` in service tests); pgvector
+retrieval tests run against the real extension. CI runs them under `base` settings so
+the auth default is in force.
+
+## Invariants worth money
+
+1. A failed AI turn deletes the just-created user message — no orphans.
+2. RAG failures degrade to a plain LLM answer; retrieval never takes chat down.
+3. Provider exceptions never escape as raw 500s — always `AIServiceError` → status.
+4. History sent to the model: last 10 messages, user/assistant roles only.
+5. Embedding model/provider/dimensions changes require migration + re-embed + cache
+   clear, in one PR (CLAUDE.md §4.5) — otherwise retrieval is silently poisoned.
+6. Gunicorn timeout > provider timeout.
