@@ -30,6 +30,16 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Session id of the send in flight (else null). The server commits the
+  // user message before the slow AI call, so a session GET landing mid-send
+  // already contains it — letting that snapshot or the append win blindly
+  // duplicates message ids (React duplicate-key error).
+  const sendingToRef = useRef<string | null>(null);
+  const activeSessionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
@@ -54,7 +64,9 @@ export default function ChatPage() {
     api
       .getSession(accessToken, activeSessionId)
       .then((detail) => {
-        if (!ignore) setMessages(detail.messages);
+        if (!ignore && sendingToRef.current !== activeSessionId) {
+          setMessages(detail.messages);
+        }
       })
       .catch(() => {
         if (!ignore) setMessages([]);
@@ -93,6 +105,7 @@ export default function ChatPage() {
         setActiveSessionId(session.id);
         sessionId = session.id;
       }
+      sendingToRef.current = sessionId;
 
       setMessages((prev) => [
         ...prev,
@@ -106,12 +119,20 @@ export default function ChatPage() {
       ]);
 
       const result = await api.sendMessage(accessToken, sessionId, content);
-      setMessages((prev) => [...prev.filter((m) => !m.id.startsWith("pending-")), result.user, result.assistant]);
+      if (activeSessionIdRef.current === sessionId) {
+        setMessages((prev) => {
+          const kept = prev.filter((m) => !m.id.startsWith("pending-"));
+          const ids = new Set(kept.map((m) => m.id));
+          const turn = [result.user, result.assistant].filter((m) => !ids.has(m.id));
+          return [...kept, ...turn];
+        });
+      }
       api.listSessions(accessToken).then(setSessions);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t.sendFailed);
       setMessages((prev) => prev.filter((m) => !m.id.startsWith("pending-")));
     } finally {
+      sendingToRef.current = null;
       setSending(false);
     }
   }
