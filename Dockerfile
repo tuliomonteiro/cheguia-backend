@@ -18,10 +18,12 @@ COPY . .
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Collect static files at build time (fails gracefully if env vars aren't set)
-RUN SECRET_KEY=build-placeholder DB_USER=none OPENAI_API_KEY=none \
-    python manage.py collectstatic --noinput --settings=cheguia.settings.prod \
-    || true
+# Collect static files at build time. The dummy values only satisfy prod
+# settings' crash-on-missing env reads; nothing connects to a DB here.
+# No fallback: a collectstatic failure must fail the image build.
+RUN SECRET_KEY=build-placeholder DB_USER=none \
+    ALLOWED_HOSTS=build-placeholder CORS_ALLOWED_ORIGINS=https://build-placeholder \
+    python manage.py collectstatic --noinput --settings=cheguia.settings.prod
 
 # Run as non-root
 RUN adduser --disabled-password --no-create-home appuser && chown -R appuser /app

@@ -14,6 +14,11 @@ __pycache__
 *.egg-info
 .Python
 
+# Node / frontend — the backend image does not ship the frontend
+# (it is built and deployed independently; see README)
+node_modules/
+frontend/
+
 # Virtual environments
 venv/
 .venv/
