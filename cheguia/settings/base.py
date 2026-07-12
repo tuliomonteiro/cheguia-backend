@@ -134,6 +134,10 @@ AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# Backoffice mount point. Set DJANGO_ADMIN_URL to a non-obvious path in
+# production so the admin is not sitting at the well-known /admin/.
+ADMIN_URL = os.getenv('DJANGO_ADMIN_URL', 'admin/').strip('/') + '/'
+
 CORS_ALLOW_CREDENTIALS = True
 
 # Structured logging: JSON lines on stdout so log aggregators can parse

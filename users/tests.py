@@ -197,3 +197,45 @@ class PasswordChangeTests(APITestCase):
     def test_requires_authentication(self):
         self.client.force_authenticate(None)
         self.assertEqual(self._change().status_code, status.HTTP_401_UNAUTHORIZED)
+
+
+class AdminBackofficeTests(APITestCase):
+    """The admin is the backoffice: staff-only, invisible to regular users."""
+
+    def setUp(self):
+        cache.clear()
+        self.staff = User.objects.create_user(
+            email='staff@test.local', username='staff', password='S3nha-adm-1!',
+            is_staff=True, is_superuser=True,
+        )
+        self.regular = User.objects.create_user(
+            email='user@test.local', username='user', password='S3nha-usr-1!'
+        )
+
+    def test_regular_user_is_redirected_to_admin_login(self):
+        self.client.force_login(self.regular)
+        response = self.client.get('/admin/')
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/admin/login/', response['Location'])
+
+    def test_staff_sees_index_and_all_registered_changelists(self):
+        self.client.force_login(self.staff)
+        self.assertEqual(self.client.get('/admin/').status_code, 200)
+        for url in (
+            reverse('admin:users_user_changelist'),
+            reverse('admin:chat_chatsession_changelist'),
+            reverse('admin:chat_message_changelist'),
+            reverse('admin:documents_document_changelist'),
+            reverse('admin:ai_embeddingcache_changelist'),
+        ):
+            self.assertEqual(self.client.get(url).status_code, 200, url)
+
+    def test_staff_can_open_user_change_form_and_flip_premium(self):
+        self.client.force_login(self.staff)
+        url = reverse('admin:users_user_change', args=[self.regular.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)
+
+        self.regular.is_premium = True
+        self.regular.save(update_fields=['is_premium'])
+        self.regular.refresh_from_db()
+        self.assertTrue(self.regular.is_premium)
