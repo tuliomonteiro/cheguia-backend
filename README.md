@@ -18,6 +18,7 @@ This repo contains both the Django backend (root) and the Next.js frontend (`fro
   - [Without Docker](#without-docker)
   - [Frontend (Next.js)](#frontend-nextjs)
 - [Tests](#tests)
+- [Backoffice (Django admin)](#backoffice-django-admin)
 - [Environment Variables](#environment-variables)
 - [Knowledge Base](#knowledge-base)
 - [Settings](#settings)
@@ -385,6 +386,19 @@ explicit `IsAuthenticated` decorators are tested for auth under any settings.
 
 ---
 
+## Backoffice (Django admin)
+
+A staff-only backoffice lives on the backend (default `http://localhost:8000/admin/`) — separate from the user-facing frontend, which never links to it. Registered there:
+
+- **Users** — search by email, flip `is_premium`/`is_staff`, change passwords (email is the login field).
+- **Chat sessions** — filterable list with the full message transcript inline (read-only), for support/debugging.
+- **Documents** — knowledge-base browser. Title/content are deliberately read-only (embeddings derive from them; updates must go through `ingest_documents --update`); type, language, and source URL are editable, and orphaned rows can be deleted.
+- **Embedding cache** — view/delete-only (deleting entries is the sanctioned fix after an embedding-model change).
+
+Access requires `is_staff`. Create an admin with `python manage.py createsuperuser` (inside docker: `docker compose exec web python manage.py createsuperuser`) and log in with the **email**. In production, set `DJANGO_ADMIN_URL` to a non-obvious path (the default `/admin/` then 404s) and note the admin needs static-file serving to render styled under `DEBUG=False`.
+
+---
+
 ## Environment Variables
 
 ### Backend
@@ -404,6 +418,7 @@ Copy `.env.example` to `.env` and fill in the values.
 | `THROTTLE_ANON` | No | `30/min` | Global rate limit for unauthenticated requests |
 | `THROTTLE_USER` | No | `120/min` | Global rate limit for authenticated requests |
 | `THROTTLE_CHAT` | No | `15/min` | Stricter limit for AI-cost-bearing endpoints (`/api/chat/`, message posts) |
+| `DJANGO_ADMIN_URL` | No | `admin/` | Mount path of the backoffice — pick a non-obvious one in production |
 | `LOG_LEVEL` | No | `INFO` | Root log level (logs are JSON lines; dev uses a plain formatter) |
 | `SENTRY_DSN` | No | `""` | Sentry error tracking — empty disables Sentry entirely |
 | `SENTRY_ENVIRONMENT` | No | `production` | Environment tag on Sentry events |
