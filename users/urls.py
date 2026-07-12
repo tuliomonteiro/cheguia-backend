@@ -7,4 +7,5 @@ urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='auth-token-obtain'),
     path('token/refresh/', TokenRefreshView.as_view(), name='auth-token-refresh'),
     path('me/', views.me, name='auth-me'),
+    path('password/change/', views.change_password, name='auth-password-change'),
 ]

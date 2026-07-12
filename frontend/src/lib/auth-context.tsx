@@ -17,6 +17,10 @@ interface AuthContextValue {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: api.RegisterInput) => Promise<void>;
+  updateProfile: (data: {
+    username?: string;
+    language_preference?: string;
+  }) => Promise<void>;
   logout: () => void;
 }
 
@@ -72,13 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [login],
   );
 
+  const updateProfile = useCallback(
+    async (data: { username?: string; language_preference?: string }) => {
+      const current = tokenStore.getTokens();
+      if (!current) throw new Error("Not authenticated");
+      const me = await api.updateMe(current.access, data);
+      setUser(me);
+    },
+    [],
+  );
+
   const logout = useCallback(() => {
     tokenStore.setTokens(null);
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ user, accessToken, loading, login, register: registerUser, logout }}
+      value={{
+        user,
+        accessToken,
+        loading,
+        login,
+        register: registerUser,
+        updateProfile,
+        logout,
+      }}
     >
       {children}
     </AuthContext.Provider>

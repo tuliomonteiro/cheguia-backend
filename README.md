@@ -191,6 +191,8 @@ cheguia-backend/
 | POST | `/api/auth/token/` | Public | Login — returns `access` + `refresh` tokens |
 | POST | `/api/auth/token/refresh/` | Public | Refresh an access token |
 | GET | `/api/auth/me/` | Required | Return the authenticated user's profile |
+| PATCH | `/api/auth/me/` | Required | Update profile (`username`, `language_preference`; email is immutable) |
+| POST | `/api/auth/password/change/` | Required | Change password (`current_password`, `new_password`, `new_password2`); existing JWTs stay valid until expiry |
 
 **Register**
 ```json
@@ -352,7 +354,7 @@ The UI will be available at **http://localhost:3000**. `cheguia/settings/dev.py`
 
 Assistant replies render as sanitized Markdown (GFM — lists, tables, links; raw HTML is escaped and `javascript:` URLs neutralised), and each reply's RAG citations appear as deduplicated links to the official sources (`set.gov.py`, `migraciones.gov.py`, …). User messages always render as plain text.
 
-The UI is localized to Portuguese and Spanish (`frontend/src/lib/i18n.ts`): a logged-in user's `language_preference` wins; before login the browser language decides, with Spanish as the fallback (matching the backend default). The register form includes a language selector that persists the choice to the backend. Sessions can be deleted from the sidebar (hover → ✕, with confirmation).
+The UI is localized to Portuguese and Spanish (`frontend/src/lib/i18n.ts`): a logged-in user's `language_preference` wins; before login the browser language decides, with Spanish as the fallback (matching the backend default). The register form includes a language selector that persists the choice to the backend, and `/settings` lets a signed-in user switch language (the UI flips immediately) and change their password. Sessions can be deleted from the sidebar (hover → ✕, with confirmation).
 
 Auth uses JWT bearer tokens (no cookies): the token pair lives in `frontend/src/lib/token-store.ts` (in-memory, persisted to `localStorage`), and `frontend/src/lib/api.ts` attaches `Authorization: Bearer <access>` to every request. When an authenticated request gets a 401 (access token expired — 60-minute lifetime), the client transparently refreshes via `/api/auth/token/refresh/`, stores the rotated pair, and retries the request once; concurrent requests share a single in-flight refresh. Only a definitively rejected refresh token logs the user out — transient network failures never do. `AuthProvider` (`frontend/src/lib/auth-context.tsx`) subscribes to the token store so rotated tokens propagate to React state and a rejected refresh redirects to `/login`.
 
