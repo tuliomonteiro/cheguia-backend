@@ -159,10 +159,20 @@ repeatable data operation is a management command in the owning app, with
 `--help` text and a usage docstring — like `ingest_documents`.
 
 **Done when:**
-- [ ] ≥ 30 question/expected-doc pairs covering every `document_type`, both languages
-- [ ] `python manage.py eval_retrieval` prints hit@1, hit@5, and distances
-- [ ] Current numbers recorded here as the baseline to beat
-- [ ] Threshold/TOP_K changes justified by a before/after from this command, never by vibes
+- [x] ≥ 30 question/expected-doc pairs covering every `document_type`, both languages —
+  32 pairs in the bundled fixture (`documents/management/commands/eval_retrieval.py`),
+  covering `tax`/`immigration`/`banking`/`utilities` in both `pt` and `es`, plus 8
+  "no document should match" cases. `general` has no pairs yet because the KB has no
+  `general` document to expect — add coverage once 3.2 ingests one.
+- [x] `python manage.py eval_retrieval` prints hit@1, hit@5, and distances — also
+  broken down per query language, to surface the cross-lingual gap from gap 2 directly.
+- [ ] Current numbers recorded here as the baseline to beat — **blocked**: embedding
+  the fixture's 32 queries needs a real call through `AI_EMBEDDING_PROVIDER` (OpenAI),
+  and this environment has no `OPENAI_API_KEY`. Run `python manage.py ingest_documents
+  --sample && python manage.py eval_retrieval` with a real key and paste the output
+  here as the baseline.
+- [ ] Threshold/TOP_K changes justified by a before/after from this command, never by
+  vibes — no threshold/TOP_K change proposed yet; applies the next time one is.
 
 ### 3.4 A disclaimer
 

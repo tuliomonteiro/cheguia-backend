@@ -97,3 +97,88 @@ class IngestDocumentsTests(TestCase):
     def test_missing_file_raises_command_error(self):
         with self.assertRaises(CommandError):
             ingest('--file', '/tmp/nao-existe.json')
+
+
+E_TAX = [1.0] + [0.0] * 1535
+E_BANK = [0.0, 1.0] + [0.0] * 1534
+E_FAR = [0.0, 0.0, 1.0] + [0.0] * 1533
+
+
+def write_fixture_file(cases):
+    f = tempfile.NamedTemporaryFile(
+        mode='w', suffix='.json', delete=False, encoding='utf-8'
+    )
+    json.dump(cases, f)
+    f.close()
+    return f.name
+
+
+def eval_retrieval(fixture, embeddings_by_query):
+    out = StringIO()
+    path = write_fixture_file(fixture)
+    with patch(
+        'documents.management.commands.eval_retrieval.get_embedding',
+        side_effect=lambda query: embeddings_by_query[query],
+    ):
+        call_command('eval_retrieval', '--file', path, stdout=out, stderr=out)
+    return out.getvalue()
+
+
+class EvalRetrievalTests(TestCase):
+    def setUp(self):
+        self.tax = Document.objects.create(
+            title='Doc Tax', content='conteúdo', document_type='tax',
+            language='pt', embedding_vector=E_TAX,
+        )
+        self.bank = Document.objects.create(
+            title='Doc Bank', content='conteúdo', document_type='banking',
+            language='pt', embedding_vector=E_BANK,
+        )
+
+    def test_exact_match_is_a_hit(self):
+        fixture = [{'query': 'q-tax', 'language': 'pt', 'expected_titles': ['Doc Tax']}]
+        output = eval_retrieval(fixture, {'q-tax': E_TAX})
+
+        self.assertIn('hit@1: 1/1 (100%)', output)
+        self.assertIn('hit@5: 1/1 (100%)', output)
+
+    def test_wrong_top_result_is_a_partial_hit_at_5(self):
+        # Query embeds like Doc Bank, but the fixture expects Doc Tax. With
+        # only 2 documents both are inside TOP_K, so it still hits at 5.
+        fixture = [{'query': 'q-miss', 'language': 'pt', 'expected_titles': ['Doc Tax']}]
+        output = eval_retrieval(fixture, {'q-miss': E_BANK})
+
+        self.assertIn('hit@1: 0/1 (0%)', output)
+        self.assertIn('hit@5: 1/1 (100%)', output)
+
+    def test_no_expected_document_and_far_result_counts_as_correct_abstention(self):
+        fixture = [{'query': 'q-none', 'language': 'es', 'expected_titles': []}]
+        output = eval_retrieval(fixture, {'q-none': E_FAR})
+
+        self.assertIn('correctly returned nothing relevant: 1/1 (100%)', output)
+
+    def test_no_expected_document_but_close_result_is_a_false_positive(self):
+        fixture = [{'query': 'q-false-positive', 'language': 'es', 'expected_titles': []}]
+        output = eval_retrieval(fixture, {'q-false-positive': E_TAX})
+
+        self.assertIn('correctly returned nothing relevant: 0/1 (0%)', output)
+        self.assertIn('FALSE POSITIVE', output)
+
+    def test_language_breakdown_is_reported(self):
+        fixture = [
+            {'query': 'q-pt', 'language': 'pt', 'expected_titles': ['Doc Tax']},
+            {'query': 'q-es', 'language': 'es', 'expected_titles': ['Doc Tax']},
+        ]
+        output = eval_retrieval(fixture, {'q-pt': E_TAX, 'q-es': E_BANK})
+
+        self.assertIn('pt: hit@1 1/1 (100%)', output)
+        self.assertIn('es: hit@1 0/1 (0%)', output)
+
+    def test_empty_knowledge_base_raises_command_error(self):
+        Document.objects.all().delete()
+        with self.assertRaises(CommandError):
+            eval_retrieval([{'query': 'q', 'language': 'pt', 'expected_titles': []}], {'q': E_TAX})
+
+    def test_missing_fixture_file_raises_command_error(self):
+        with self.assertRaises(CommandError):
+            call_command('eval_retrieval', '--file', '/tmp/nao-existe.json')

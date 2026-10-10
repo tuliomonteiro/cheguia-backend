@@ -136,7 +136,8 @@ cheguia-backend/
 │   ├── serializers.py
 │   └── management/
 │       └── commands/
-│           └── ingest_documents.py   # CLI to embed and load documents
+│           ├── ingest_documents.py   # CLI to embed and load documents
+│           └── eval_retrieval.py     # CLI to measure retrieval quality (hit@1/5, distances)
 │
 ├── users/                      # Authentication
 │   ├── models.py               # Custom User (UUID pk, email login)
@@ -463,6 +464,20 @@ python manage.py ingest_documents --sample --update
 ```
 
 Valid `document_type` values: `immigration`, `tax`, `utilities`, `banking`, `general`.
+
+**Measuring retrieval quality:**
+```bash
+# Run the bundled PT/ES question fixture against the embedded KB and print
+# hit@1, hit@5, and the cosine-distance distribution (overall and per language)
+python manage.py eval_retrieval
+
+# Run a custom fixture instead
+python manage.py eval_retrieval --file /path/to/fixture.json
+```
+See the command's docstring for the fixture JSON format. Use this before and
+after changing `TOP_K`/`RELEVANCE_THRESHOLD` in `ai/rag.py`, or after growing
+the knowledge base, to justify the change with numbers instead of guessing
+(see ROADMAP.md §3.3).
 
 ---
 
