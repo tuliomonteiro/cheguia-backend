@@ -71,11 +71,20 @@ export interface ChatSession {
   last_message: string | null;
 }
 
+export interface MessageFeedback {
+  id: string;
+  rating: "up" | "down";
+  comment: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Message {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   sources: string[]; // RAG citation URLs, in retrieval order (may repeat)
+  feedback: MessageFeedback | null;
   created_at: string;
 }
 
@@ -211,6 +220,19 @@ export function sendMessage(
   return request(
     `/api/sessions/${sessionId}/messages/`,
     { method: "POST", body: JSON.stringify({ content }) },
+    accessToken,
+  );
+}
+
+export function rateMessage(
+  accessToken: string,
+  sessionId: string,
+  messageId: string,
+  rating: "up" | "down",
+): Promise<MessageFeedback> {
+  return request(
+    `/api/sessions/${sessionId}/messages/${messageId}/feedback/`,
+    { method: "POST", body: JSON.stringify({ rating }) },
     accessToken,
   );
 }

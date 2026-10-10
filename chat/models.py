@@ -49,3 +49,26 @@ class Message(models.Model):
     
     def __str__(self):
         return f"{self.role}: {self.content[:50]}..."
+
+
+class MessageFeedback(models.Model):
+    """Thumbs up/down (+ optional comment) a user leaves on an assistant message"""
+
+    RATING_CHOICES = [
+        ('up', 'Thumbs up'),
+        ('down', 'Thumbs down'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    message = models.OneToOneField(Message, on_delete=models.CASCADE, related_name='feedback')
+    rating = models.CharField(max_length=10, choices=RATING_CHOICES)
+    comment = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'message_feedback'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.rating} on {self.message_id}"

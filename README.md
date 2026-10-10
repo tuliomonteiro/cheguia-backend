@@ -235,6 +235,8 @@ Rate limits apply to every endpoint (see `THROTTLE_*` env vars); exceeding one r
 | DELETE | `/api/sessions/{id}/` | Delete a session and all its messages |
 | GET | `/api/sessions/{id}/messages/` | List messages in a session |
 | POST | `/api/sessions/{id}/messages/` | Send a message — triggers AI response |
+| GET | `/api/sessions/{id}/messages/{message_id}/feedback/` | Get feedback left on a message (`null` if none yet) |
+| POST | `/api/sessions/{id}/messages/{message_id}/feedback/` | Rate a message 👍/👎 (upsert — rating again replaces it) |
 
 **Send a message**
 ```json
@@ -248,6 +250,7 @@ POST /api/sessions/{id}/messages/
     "role": "user",
     "content": "Como obter o RUC no Paraguai?",
     "sources": [],
+    "feedback": null,
     "created_at": "2025-01-01T12:00:00Z"
   },
   "assistant": {
@@ -255,8 +258,24 @@ POST /api/sessions/{id}/messages/
     "role": "assistant",
     "content": "O RUC é o número de identificação fiscal...",
     "sources": ["https://www.set.gov.py/..."],
+    "feedback": null,
     "created_at": "2025-01-01T12:00:01Z"
   }
+}
+```
+
+**Rate a message** — only assistant messages accept feedback (400 on a user message):
+```json
+POST /api/sessions/{id}/messages/{message_id}/feedback/
+{ "rating": "down", "comment": "não respondeu minha pergunta" }
+
+→ 200 (201 the first time)
+{
+  "id": "...",
+  "rating": "down",
+  "comment": "não respondeu minha pergunta",
+  "created_at": "2025-01-01T12:00:02Z",
+  "updated_at": "2025-01-01T12:00:05Z"
 }
 ```
 

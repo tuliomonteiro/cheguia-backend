@@ -114,6 +114,7 @@ export default function ChatPage() {
           role: "user",
           content,
           sources: [],
+          feedback: null,
           created_at: new Date().toISOString(),
         },
       ]);
@@ -150,6 +151,25 @@ export default function ChatPage() {
     if (activeSessionId === id) {
       setMessages([]);
       setActiveSessionId(rest[0]?.id ?? null);
+    }
+  }
+
+  async function handleRate(messageId: string, rating: "up" | "down") {
+    if (!accessToken || !activeSessionId) return;
+    const previous = messages;
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, feedback: { id: "pending", rating, comment: "", created_at: "", updated_at: "" } }
+          : m,
+      ),
+    );
+    try {
+      const feedback = await api.rateMessage(accessToken, activeSessionId, messageId, rating);
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, feedback } : m)));
+    } catch {
+      setMessages(previous);
+      setError(t.feedbackFailed);
     }
   }
 
@@ -275,6 +295,36 @@ export default function ChatPage() {
                         {sourceLabel(url)}
                       </a>
                     ))}
+                  </p>
+                )}
+                {m.role === "assistant" && (
+                  <p className="mt-2 flex gap-2 text-xs">
+                    <button
+                      onClick={() => handleRate(m.id, "up")}
+                      title={t.feedbackUp}
+                      aria-label={t.feedbackUp}
+                      aria-pressed={m.feedback?.rating === "up"}
+                      className={`rounded px-1 ${
+                        m.feedback?.rating === "up"
+                          ? "opacity-100"
+                          : "opacity-50 hover:opacity-100"
+                      }`}
+                    >
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleRate(m.id, "down")}
+                      title={t.feedbackDown}
+                      aria-label={t.feedbackDown}
+                      aria-pressed={m.feedback?.rating === "down"}
+                      className={`rounded px-1 ${
+                        m.feedback?.rating === "down"
+                          ? "opacity-100"
+                          : "opacity-50 hover:opacity-100"
+                      }`}
+                    >
+                      👎
+                    </button>
                   </p>
                 )}
               </div>

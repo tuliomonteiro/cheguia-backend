@@ -19,6 +19,9 @@ export interface Messages {
   deleteChat: string;
   deleteConfirm: string;
   deleteFailed: string;
+  feedbackUp: string;
+  feedbackDown: string;
+  feedbackFailed: string;
   // login
   loginTitle: string;
   email: string;
@@ -69,6 +72,9 @@ const MESSAGES: Record<Lang, Messages> = {
     deleteChat: "Apagar conversa",
     deleteConfirm: "Apagar esta conversa? Esta ação não pode ser desfeita.",
     deleteFailed: "Não foi possível apagar a conversa.",
+    feedbackUp: "Resposta útil",
+    feedbackDown: "Resposta não útil",
+    feedbackFailed: "Não foi possível registrar sua avaliação.",
     loginTitle: "Entrar na Cheguia",
     email: "E-mail",
     password: "Senha",
@@ -114,6 +120,9 @@ const MESSAGES: Record<Lang, Messages> = {
     deleteChat: "Eliminar conversación",
     deleteConfirm: "¿Eliminar esta conversación? Esta acción no se puede deshacer.",
     deleteFailed: "No se pudo eliminar la conversación.",
+    feedbackUp: "Respuesta útil",
+    feedbackDown: "Respuesta no útil",
+    feedbackFailed: "No se pudo registrar tu valoración.",
     loginTitle: "Iniciar sesión en Cheguia",
     email: "Correo electrónico",
     password: "Contraseña",
