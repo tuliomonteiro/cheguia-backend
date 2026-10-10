@@ -51,6 +51,11 @@ branch, do not edit it.)
 adapter pattern, data model, invariants). `README.md` covers setup and API usage. If
 either disagrees with the code, the code wins — and fix the doc in the same PR.
 
+`ROADMAP.md` is the planning context: where the project stands, the gaps that
+matter, and the prioritized next steps with done-when criteria. Read it before
+proposing what to work on next; when an item ships, move it into the "Where we
+stand" table and flip the README roadmap row in the same PR.
+
 ## 2. Running and verifying
 
 ```bash

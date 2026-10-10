@@ -22,7 +22,7 @@ This repo contains both the Django backend (root) and the Next.js frontend (`fro
 - [Environment Variables](#environment-variables)
 - [Knowledge Base](#knowledge-base)
 - [Settings](#settings)
-- [Development Roadmap](#development-roadmap)
+- [Development Roadmap](#development-roadmap) — and [ROADMAP.md](ROADMAP.md) for what's next
 
 ---
 
@@ -136,7 +136,8 @@ cheguia-backend/
 │   ├── serializers.py
 │   └── management/
 │       └── commands/
-│           └── ingest_documents.py   # CLI to embed and load documents
+│           ├── ingest_documents.py   # CLI to embed and load documents
+│           └── eval_retrieval.py     # CLI to measure retrieval quality (hit@1/5, distances)
 │
 ├── users/                      # Authentication
 │   ├── models.py               # Custom User (UUID pk, email login)
@@ -464,6 +465,20 @@ python manage.py ingest_documents --sample --update
 
 Valid `document_type` values: `immigration`, `tax`, `utilities`, `banking`, `general`.
 
+**Measuring retrieval quality:**
+```bash
+# Run the bundled PT/ES question fixture against the embedded KB and print
+# hit@1, hit@5, and the cosine-distance distribution (overall and per language)
+python manage.py eval_retrieval
+
+# Run a custom fixture instead
+python manage.py eval_retrieval --file /path/to/fixture.json
+```
+See the command's docstring for the fixture JSON format. Use this before and
+after changing `TOP_K`/`RELEVANCE_THRESHOLD` in `ai/rag.py`, or after growing
+the knowledge base, to justify the change with numbers instead of guessing
+(see ROADMAP.md §3.3).
+
 ---
 
 ## Settings
@@ -495,3 +510,8 @@ DJANGO_SETTINGS_MODULE=cheguia.settings.prod python manage.py runserver
 | 6 | Done | Rate limiting, structured logging, Sentry (opt-in via `SENTRY_DSN`) |
 | 7 | Done | Next.js frontend (`frontend/`) — auth, chat sessions, message thread |
 | 8 | Planned | User subscriptions and premium features |
+
+Steps 1–7 cover the build-out that got the system working end to end. For what
+comes next — deployment, growing the knowledge base, measuring retrieval
+quality, and the open product decisions behind step 8 — see
+**[ROADMAP.md](ROADMAP.md)**.
