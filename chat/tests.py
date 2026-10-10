@@ -9,7 +9,7 @@ from rest_framework.test import APITestCase
 
 from ai.exceptions import AIServiceError
 from api.tests import throttle_rate
-from chat.models import ChatSession, Message
+from chat.models import ChatSession, Message, MessageFeedback
 from users.models import User
 
 SESSIONS = reverse('session-list-create')
@@ -24,6 +24,10 @@ AI_RESULT = {
 
 def messages_url(session_id):
     return reverse('message-list-create', args=[session_id])
+
+
+def feedback_url(session_id, message_id):
+    return reverse('message-feedback', args=[session_id, message_id])
 
 
 class SessionTests(APITestCase):
@@ -145,6 +149,90 @@ class MessageTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         mock_ai.assert_not_called()
+
+
+class MessageFeedbackTests(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='ana@test.local', username='ana', password='S3nha-forte-123!'
+        )
+        self.session = ChatSession.objects.create(user=self.user)
+        self.assistant_msg = Message.objects.create(
+            session=self.session, role='assistant', content='resposta'
+        )
+        self.user_msg = Message.objects.create(
+            session=self.session, role='user', content='pergunta'
+        )
+        self.client.force_authenticate(self.user)
+
+    def test_rate_assistant_message_creates_feedback(self):
+        response = self.client.post(
+            feedback_url(self.session.id, self.assistant_msg.id), {'rating': 'up'}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data['rating'], 'up')
+        self.assertEqual(MessageFeedback.objects.get(message=self.assistant_msg).rating, 'up')
+
+    def test_rating_again_updates_rather_than_duplicates(self):
+        self.client.post(feedback_url(self.session.id, self.assistant_msg.id), {'rating': 'up'})
+
+        response = self.client.post(
+            feedback_url(self.session.id, self.assistant_msg.id),
+            {'rating': 'down', 'comment': 'não ajudou'},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(MessageFeedback.objects.filter(message=self.assistant_msg).count(), 1)
+        feedback = MessageFeedback.objects.get(message=self.assistant_msg)
+        self.assertEqual(feedback.rating, 'down')
+        self.assertEqual(feedback.comment, 'não ajudou')
+
+    def test_rating_a_user_message_is_rejected(self):
+        response = self.client.post(
+            feedback_url(self.session.id, self.user_msg.id), {'rating': 'up'}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(MessageFeedback.objects.exists())
+
+    def test_invalid_rating_is_400(self):
+        response = self.client.post(
+            feedback_url(self.session.id, self.assistant_msg.id), {'rating': 'sideways'}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(MessageFeedback.objects.exists())
+
+    def test_get_returns_none_when_no_feedback_yet(self):
+        response = self.client.get(feedback_url(self.session.id, self.assistant_msg.id))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data)
+
+    def test_feedback_on_another_users_session_is_404(self):
+        other = User.objects.create_user(
+            email='otro@test.local', username='otro', password='S3nha-forte-123!'
+        )
+        foreign_session = ChatSession.objects.create(user=other)
+        foreign_msg = Message.objects.create(
+            session=foreign_session, role='assistant', content='resposta'
+        )
+
+        response = self.client.post(
+            feedback_url(foreign_session.id, foreign_msg.id), {'rating': 'up'}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_message_list_nests_current_feedback(self):
+        self.client.post(feedback_url(self.session.id, self.assistant_msg.id), {'rating': 'up'})
+
+        response = self.client.get(messages_url(self.session.id))
+
+        by_id = {m['id']: m for m in response.data}
+        self.assertEqual(by_id[str(self.assistant_msg.id)]['feedback']['rating'], 'up')
+        self.assertIsNone(by_id[str(self.user_msg.id)]['feedback'])
 
 
 @throttle_rate

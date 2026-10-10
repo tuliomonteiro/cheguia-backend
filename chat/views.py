@@ -6,8 +6,13 @@ from django.shortcuts import get_object_or_404
 from ai.exceptions import AIServiceError
 from ai.service import get_response
 from api.throttling import ChatRateThrottle
-from .models import ChatSession, Message
-from .serializers import ChatSessionSerializer, ChatSessionDetailSerializer, MessageSerializer
+from .models import ChatSession, Message, MessageFeedback
+from .serializers import (
+    ChatSessionSerializer,
+    ChatSessionDetailSerializer,
+    MessageSerializer,
+    MessageFeedbackSerializer,
+)
 
 
 @api_view(['GET', 'POST'])
@@ -82,3 +87,30 @@ def message_list_create(request, session_id):
         'user': MessageSerializer(user_msg).data,
         'assistant': MessageSerializer(ai_msg).data,
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def message_feedback(request, session_id, message_id):
+    session = get_object_or_404(ChatSession, id=session_id, user=request.user)
+    message = get_object_or_404(Message, id=message_id, session=session)
+
+    if request.method == 'GET':
+        feedback = getattr(message, 'feedback', None)
+        return Response(MessageFeedbackSerializer(feedback).data if feedback else None)
+
+    if message.role != 'assistant':
+        return Response(
+            {'error': 'Feedback can only be left on assistant messages.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    serializer = MessageFeedbackSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    feedback, created = MessageFeedback.objects.update_or_create(
+        message=message,
+        defaults=serializer.validated_data,
+    )
+    response_status = status.HTTP_201_CREATED if created else status.HTTP_200_OK
+    return Response(MessageFeedbackSerializer(feedback).data, status=response_status)

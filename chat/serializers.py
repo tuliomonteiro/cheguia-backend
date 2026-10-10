@@ -1,12 +1,25 @@
 from rest_framework import serializers
-from .models import ChatSession, Message
+from .models import ChatSession, Message, MessageFeedback
+
+
+class MessageFeedbackSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MessageFeedback
+        fields = ['id', 'rating', 'comment', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    feedback = serializers.SerializerMethodField()
+
     class Meta:
         model = Message
-        fields = ['id', 'role', 'content', 'sources', 'created_at']
-        read_only_fields = ['id', 'role', 'sources', 'created_at']
+        fields = ['id', 'role', 'content', 'sources', 'feedback', 'created_at']
+        read_only_fields = ['id', 'role', 'sources', 'feedback', 'created_at']
+
+    def get_feedback(self, obj):
+        feedback = getattr(obj, 'feedback', None)
+        return MessageFeedbackSerializer(feedback).data if feedback else None
 
 
 class ChatSessionSerializer(serializers.ModelSerializer):

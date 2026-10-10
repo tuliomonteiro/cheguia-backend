@@ -245,11 +245,14 @@ timestamps, `__str__` (CLAUDE.md §3). Function-based view, serializer
 validation, no ViewSets (§4.8).
 
 **Done when:**
-- [ ] Model + migration, reviewed by eye, applies clean on a fresh DB
-- [ ] `POST` endpoint with serializer validation and a test covering success + one failure
-- [ ] Frontend control on assistant messages only
-- [ ] Visible in the admin, filterable by rating
-- [ ] README API reference updated
+- [x] Model + migration, reviewed by eye, applies clean on a fresh DB — `chat.MessageFeedback`,
+  `chat/migrations/0003_messagefeedback.py`
+- [x] `POST` endpoint with serializer validation and a test covering success + one failure —
+  `chat/views.py:message_feedback`, 7 tests in `chat/tests.py::MessageFeedbackTests`
+- [x] Frontend control on assistant messages only — thumbs buttons in `frontend/src/app/page.tsx`,
+  rendered only for `m.role === "assistant"`
+- [x] Visible in the admin, filterable by rating — `MessageFeedbackAdmin` in `chat/admin.py`
+- [x] README API reference updated
 
 ### 4.4 Frontend tests
 
